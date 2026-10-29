@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Portal — ESP Innovations Inc.</title>
+<meta name="description" content="Sign in to your ESP Innovations business account to place orders for goods and services and reorder products you already buy.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=zodiak@400,700&f[]=switzer@400,500,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="portal.css">
+<link rel="icon" type="image/svg+xml" href="assets/brand/icon.svg">
+</head>
+<body class="pp">
+<a class="skip" href="#pp-main">Skip to content</a>
+
+<header class="pp-header">
+  <a href="index.html" class="brand" aria-label="ESP Innovations Inc. home"><img src="assets/brand/logo-dark.svg" alt="ESP Innovations" width="160" height="50"></a>
+  <span class="pp-badge">Client portal</span>
+  <div class="pp-head-right">
+    <span class="pp-who" id="pp-who" hidden></span>
+    <a href="index.html" class="pp-back">Back to site</a>
+    <button type="button" class="pp-signout" id="pp-signout" hidden>Sign out</button>
+  </div>
+</header>
+
+<main id="pp-main">
+
+<!-- SIGN IN -->
+<section class="pp-auth topo" id="pp-auth" hidden>
+  <div class="pp-auth-inner">
+    <div class="pp-auth-copy">
+      <p class="eyebrow light">For existing partners</p>
+      <h1>Your account.<br><em>Your orders.</em></h1>
+      <p>Sign in to order goods and services, reorder what you already buy from us, and track every request from quote to delivery.</p>
+      <ul class="pp-auth-ticks">
+        <li>Private to your company</li><li>Saved products and order history</li><li><span>Every order confirmed by the <span class="espi">ESP<span>i</span></span> team</span></li>
+      </ul>
+    </div>
+    <form class="portal-card" id="pp-signin" novalidate>
+      <h2 class="pp-card-title">Sign in</h2>
+      <div class="pfield"><label for="pp-email">Business email</label><input id="pp-email" type="email" autocomplete="username" required></div>
+      <div class="pfield"><label for="pp-pass">Password</label><input id="pp-pass" type="password" autocomplete="current-password" required></div>
+      <div class="pc-row"><label class="pc-check"><input type="checkbox" checked> Keep me signed in</label><a href="mailto:orders@espinnovations.com?subject=Client%20portal%20password%20reset">Forgot password?</a></div>
+      <button class="btn pc-btn" type="submit">Sign in</button>
+      <p class="form-status pc-status" role="status" aria-live="polite"></p>
+      <button type="button" class="pp-demo" id="pp-demo">Explore with a sample account</button>
+      <p class="pc-new">New to <span class="espi">ESP<span>i</span></span>? <a href="index.html#contact">Request a business account</a></p>
+      <p class="pp-note">Preview: orders are kept only while this page is open. When the portal goes live, accounts are created by <span class="espi">ESP<span>i</span></span> and orders go straight to our team.</p>
+    </form>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<div class="pp-app" id="pp-app" hidden>
+  <nav class="pp-tabs" aria-label="Portal sections">
+    <button type="button" data-tab="overview" aria-current="page">Overview</button>
+    <button type="button" data-tab="order">New order</button>
+    <button type="button" data-tab="reorder">Reorder</button>
+    <button type="button" data-tab="history">Order history</button>
+    <button type="button" data-tab="account">Company profile</button>
+    <button type="button" data-tab="payment">Payment methods</button>
+    <button type="button" data-tab="cart" class="pp-cart-tab">Order request <span class="pp-count" id="pp-count">0</span></button>
+  </nav>
+
+  <div class="pp-panels">
+    <!-- OVERVIEW -->
+    <section class="pp-panel" data-panel="overview">
+      <p class="eyebrow">Welcome back</p>
+      <h1 class="pp-h" id="pp-hello">Hello.</h1>
+      <p class="pp-sub" id="pp-sample-note" hidden>You&rsquo;re viewing a sample account. The company, orders and statuses are examples to show how the portal works.</p>
+      <div class="pp-stats">
+        <div><span id="st-open">0</span><p>Open orders</p></div>
+        <div><span id="st-total">0</span><p>Orders placed</p></div>
+        <div><span id="st-items">0</span><p>Products on file</p></div>
+      </div>
+      <div class="pp-quick">
+        <button type="button" class="pp-q" data-go="order"><b>Place a new order</b><span>Goods and services</span></button>
+        <button type="button" class="pp-q" data-go="reorder"><b>Reorder products</b><span>From what you already buy</span></button>
+        <button type="button" class="pp-q" data-go="history"><b>Track orders</b><span>Status from quote to delivery</span></button>
+        <button type="button" class="pp-q" data-go="payment"><b>Payment methods</b><span>Cards, ACH, net terms, wire</span></button>
+      </div>
+      <h2 class="pp-h2">Recent orders</h2>
+      <div id="pp-recent"></div>
+    </section>
+
+    <!-- NEW ORDER -->
+    <section class="pp-panel" data-panel="order" hidden>
+      <p class="eyebrow">New order</p>
+      <h1 class="pp-h">Order goods &amp; services</h1>
+      <p class="pp-sub">Add items to your order request. Pricing is quoted to your account for each order, so you&rsquo;ll get a confirmed quote before anything goes into production.</p>
+      <div class="pp-filter" role="tablist" aria-label="Catalog">
+        <button type="button" role="tab" data-cat="goods" aria-selected="true">Goods</button>
+        <button type="button" role="tab" data-cat="services" aria-selected="false">Services</button>
+      </div>
+      <div class="pp-catalog" id="pp-catalog"></div>
+    </section>
+
+    <!-- REORDER -->
+    <section class="pp-panel" data-panel="reorder" hidden>
+      <p class="eyebrow">Reorder</p>
+      <h1 class="pp-h">Products you buy from us</h1>
+      <p class="pp-sub">Everything you&rsquo;ve ordered before, with your last quantity and options. Adjust the quantity and add it to a new order request.</p>
+      <div id="pp-reorder"></div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="pp-panel" data-panel="history" hidden>
+      <p class="eyebrow">Order history</p>
+      <h1 class="pp-h">Your orders</h1>
+      <p class="pp-sub">Repeat any past order in one click, then review it before sending.</p>
+      <div id="pp-history"></div>
+    </section>
+
+    <!-- ACCOUNT -->
+    <section class="pp-panel" data-panel="account" hidden>
+      <p class="eyebrow">Company profile</p>
+      <h1 class="pp-h">Account details</h1>
+      <p class="pp-sub">Used on every order request. Only your company and the <span class="espi">ESP<span>i</span></span> team can see this.</p>
+      <form class="pp-form" id="pp-profile" novalidate>
+        <div class="pfield"><label for="pf-company">Company name</label><input id="pf-company" autocomplete="organization" required></div>
+        <div class="pfield"><label for="pf-contact">Contact name</label><input id="pf-contact" autocomplete="name"></div>
+        <div class="pfield"><label for="pf-email">Email</label><input id="pf-email" type="email" autocomplete="email" required></div>
+        <div class="pfield"><label for="pf-phone">Phone</label><input id="pf-phone" type="tel" autocomplete="tel"></div>
+        <div class="pfield pf-wide"><label for="pf-ship">Ship-to address</label><textarea id="pf-ship" rows="3" autocomplete="street-address"></textarea></div>
+        <div class="pfield pf-wide"><label for="pf-bill">Billing notes (terms, PO requirements)</label><textarea id="pf-bill" rows="2"></textarea></div>
+        <button class="btn" type="submit">Save profile</button>
+        <p class="form-status pp-ok" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+
+    <!-- PAYMENT METHODS -->
+    <section class="pp-panel" data-panel="payment" hidden>
+      <p class="eyebrow">Payment methods</p>
+      <h1 class="pp-h">How your company pays</h1>
+      <p class="pp-sub">Save the payment methods your company uses, choose a default, and pick one each time you place an order. Nothing is charged when you send an order request; we charge or invoice only after you approve the quote.</p>
+      <div class="pm-secure" role="note">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 10V7a6 6 0 0 1 12 0v3M5 10h14v11H5z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        <p><b>Secure by design.</b> Card and bank details are encrypted and stored by a PCI-compliant payment processor, not on <span class="espi">ESP<span>i</span></span>&rsquo;s servers. Only the last four digits are ever shown, and your security code is never stored.</p>
+      </div>
+      <div id="pm-list" class="pm-list"></div>
+
+      <h2 class="pp-h2">Add a payment method</h2>
+      <div class="pm-types" role="tablist" aria-label="Payment type">
+        <button type="button" role="tab" data-pmtype="card" aria-selected="true">Company card</button>
+        <button type="button" role="tab" data-pmtype="ach" aria-selected="false">Bank account (ACH)</button>
+        <button type="button" role="tab" data-pmtype="terms" aria-selected="false">Net terms (invoice)</button>
+        <button type="button" role="tab" data-pmtype="wire" aria-selected="false">Wire transfer</button>
+      </div>
+
+      <form class="pp-form pm-form" id="pm-card" data-pmtype="card" novalidate>
+        <div class="pfield pf-wide"><label for="cc-name">Name on card</label><input id="cc-name" autocomplete="cc-name" required></div>
+        <div class="pfield pf-wide"><label for="cc-num">Card number</label><input id="cc-num" inputmode="numeric" autocomplete="cc-number" placeholder="1234 1234 1234 1234" maxlength="23" required><span class="pm-brand" id="cc-brand" aria-live="polite"></span></div>
+        <div class="pfield"><label for="cc-exp">Expiry (MM/YY)</label><input id="cc-exp" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5" required></div>
+        <div class="pfield"><label for="cc-cvc">Security code</label><input id="cc-cvc" inputmode="numeric" autocomplete="cc-csc" placeholder="CVC" maxlength="4" required></div>
+        <div class="pfield"><label for="cc-zip">Billing ZIP code</label><input id="cc-zip" inputmode="numeric" autocomplete="postal-code" maxlength="10" required></div>
+        <div class="pfield"><label for="cc-label">Nickname (optional)</label><input id="cc-label" placeholder="e.g. Purchasing card"></div>
+        <label class="pm-check pf-wide"><input type="checkbox" id="cc-default"> Make this the default for new orders</label>
+        <button class="btn" type="submit">Save card</button>
+        <p class="form-status pp-ok" role="status" aria-live="polite"></p>
+      </form>
+
+      <form class="pp-form pm-form" id="pm-ach" data-pmtype="ach" novalidate hidden>
+        <div class="pfield pf-wide"><label for="ach-holder">Account holder (company name)</label><input id="ach-holder" autocomplete="organization" required></div>
+        <div class="pfield"><label for="ach-bank">Bank name</label><input id="ach-bank" required></div>
+        <div class="pfield"><label for="ach-type">Account type</label><select id="ach-type"><option>Business checking</option><option>Business savings</option></select></div>
+        <div class="pfield"><label for="ach-routing">Routing number</label><input id="ach-routing" inputmode="numeric" maxlength="9" placeholder="9 digits" required></div>
+        <div class="pfield"><label for="ach-acct">Account number</label><input id="ach-acct" inputmode="numeric" maxlength="17" required></div>
+        <label class="pm-check pf-wide"><input type="checkbox" id="ach-auth" required> I&rsquo;m authorized to use this account, and I authorize ESP Innovations Inc. to debit it for orders I approve.</label>
+        <label class="pm-check pf-wide"><input type="checkbox" id="ach-default"> Make this the default for new orders</label>
+        <button class="btn" type="submit">Save bank account</button>
+        <p class="form-status pp-ok" role="status" aria-live="polite"></p>
+      </form>
+
+      <form class="pp-form pm-form" id="pm-terms" data-pmtype="terms" novalidate hidden>
+        <p class="pp-fine">Ask to be invoiced on payment terms. Our accounts team reviews each request and confirms the terms with you in writing.</p>
+        <div class="pfield"><label for="nt-ap">Accounts payable email</label><input id="nt-ap" type="email" autocomplete="email" required></div>
+        <div class="pfield"><label for="nt-terms">Terms requested</label><select id="nt-terms"><option>Net 15</option><option>Net 30</option><option>Net 45</option><option>Net 60</option></select></div>
+        <div class="pfield"><label for="nt-tax">Tax ID / EIN (optional)</label><input id="nt-tax"></div>
+        <div class="pfield"><label for="nt-po">PO required on invoices?</label><select id="nt-po"><option>Yes</option><option>No</option></select></div>
+        <button class="btn" type="submit">Request net terms</button>
+        <p class="form-status pp-ok" role="status" aria-live="polite"></p>
+      </form>
+
+      <form class="pp-form pm-form" id="pm-wire" data-pmtype="wire" novalidate hidden>
+        <p class="pp-fine">Pay each order by bank wire. We send verified wire instructions with your invoice; we never change wire details by email, so always confirm with us by phone before sending funds to new instructions.</p>
+        <div class="pfield pf-wide"><label for="wr-ap">Remittance contact email</label><input id="wr-ap" type="email" autocomplete="email" required></div>
+        <label class="pm-check pf-wide"><input type="checkbox" id="wr-default"> Make this the default for new orders</label>
+        <button class="btn" type="submit">Save wire transfer</button>
+        <p class="form-status pp-ok" role="status" aria-live="polite"></p>
+      </form>
+      <p class="pp-fine pm-preview-note">Preview portal: card and bank numbers you enter here are checked in your browser and then discarded. Only the type and last four digits are kept, and only until you sign out.</p>
+    </section>
+
+    <!-- CART -->
+    <section class="pp-panel" data-panel="cart" hidden>
+      <p class="eyebrow">Order request</p>
+      <h1 class="pp-h">Review &amp; send</h1>
+      <div id="pp-cart"></div>
+      <form class="pp-form" id="pp-checkout" novalidate hidden>
+        <div class="pfield"><label for="ck-po">Your PO number (optional)</label><input id="ck-po"></div>
+        <div class="pfield"><label for="ck-date">Requested delivery date</label><input id="ck-date" type="date"></div>
+        <div class="pfield pf-wide"><label for="ck-ship">Ship to</label><textarea id="ck-ship" rows="3"></textarea></div>
+        <fieldset class="pf-wide pm-pick"><legend>Payment method</legend><div id="ck-pay"></div></fieldset>
+        <div class="pfield pf-wide"><label for="ck-notes">Notes for the <span class="espi">ESP<span>i</span></span> team</label><textarea id="ck-notes" rows="3" placeholder="Packaging, branding, timing, certifications needed&hellip;"></textarea></div>
+        <button class="btn" type="submit">Send order request</button>
+        <p class="pp-fine">The <span class="espi">ESP<span>i</span></span> team reviews every request and replies with a confirmed quote and timeline. Your payment method is used only after you approve the quote. Your email app will open so the request also reaches orders@espinnovations.com.</p>
+      </form>
+    </section>
+  </div>
+</div>
+
+</main>
+
+<div class="pp-toast" id="pp-toast" role="status" aria-live="polite"></div>
+
+<footer class="pp-foot">
+  <p>&copy; <span id="year">2026</span> ESP Innovations Inc. &middot; 8549 Wilshire Blvd, Ste. 347, Beverly Hills, CA 90211 &middot; Orders: <a href="mailto:orders@espinnovations.com">orders@espinnovations.com</a> &middot; Invoices: <a href="mailto:accounts@espinnovations.com">accounts@espinnovations.com</a> &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
+</footer>
+
+<script src="portal.js" defer></script>
+</body>
+</html>
