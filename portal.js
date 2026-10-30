@@ -13,6 +13,8 @@
     { id: 'umbrella', kind: 'goods', name: 'Bright Night Lighted Umbrellas', tag: 'Lifestyle', img: 'assets/work/umbrellas.webp', opts: ['Slow Flow', 'Water Cluster', 'Waterbeads', 'Monsoon', 'Ripple Effect'] },
     { id: 'headphones', kind: 'goods', name: 'Qi Wireless-Charging Headphones (HQ834)', tag: 'Audio', img: 'assets/work/qi-headphones.webp', opts: ['Headphones only', 'Headphones + matching stand'] },
     { id: 'redalf', kind: 'goods', name: 'Redalf Triple Portable Monitor', tag: 'Computing', img: 'assets/work/triple-monitor.webp', opts: [] },
+    { id: 'quad', kind: 'goods', name: 'Portable Quad Laptop Screen Extender', tag: 'Computing', img: 'assets/work/quad-monitor.webp', opts: ['USB-C to USB-C', 'USB-A to USB-C'] },
+    { id: 'dual', kind: 'goods', name: '16″ Dual-Screen Touch Laptop', tag: 'Computing', img: 'assets/work/dual-laptop.webp', opts: ['i5 · 16 GB · 512 GB', 'i5 · 32 GB · 1 TB', 'i7 · 32 GB · 2 TB'] },
     { id: 'shield', kind: 'goods', name: 'VINTA Active//Shield', tag: 'Health & safety', img: 'assets/work/active-shield.webp', opts: [] },
     { id: 'kiosk', kind: 'goods', name: 'Touch-Screen Kiosks', tag: 'Commercial displays', img: 'assets/work/kiosk.webp', opts: ['Crystal silver', 'Purple gold', 'Classic black'] },
     { id: 'wall', kind: 'goods', name: 'Wall-Mounted Ad Players', tag: 'Commercial displays', img: 'assets/work/wall-player.webp', opts: ['Portrait', 'Landscape'] },
