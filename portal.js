@@ -27,19 +27,41 @@
     { id: 'svc-marketing', kind: 'services', letter: 'M', name: 'Marketing plan', tag: 'Market', desc: 'A plan to help you sell the product to your customers: positioning, launch and sales materials.' },
   ];
   const byId = id => CATALOG.find(c => c.id === id);
+  const itemName = it => byId(it.id)?.name || it.name || it.id;
+  const itemKind = it => byId(it.id)?.kind || it.kind || 'goods';
   const STEPS = ['Request sent', 'Quote sent', 'In production', 'Shipped', 'Delivered'];
+
+  // ---------- API (live accounts) ----------
+  let CSRF = '', challenged = false;
+  const RESET = (new URLSearchParams(location.search).get('reset') || '').match(/^[a-f0-9]{64}$/) ? new URLSearchParams(location.search).get('reset') : '';
+  async function api(action, data, method = 'POST') {
+    const headers = { 'X-Requested-With': 'ESPi' };
+    if (CSRF) headers['X-ESPi-CSRF'] = CSRF;
+    const opts = { method, credentials: 'same-origin', headers };
+    if (method === 'POST') { headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(data || {}); }
+    let r;
+    try { r = await fetch('api/index.php?action=' + encodeURIComponent(action), opts); }
+    catch (e) { const er = new Error('We couldn’t reach the portal. Check your connection and try again.'); er.offline = true; throw er; }
+    if (!(r.headers.get('content-type') || '').includes('application/json')) {
+      const t = await r.text();
+      const m = t.match(/document\.cookie\s*=\s*"([^"]+)"/); // host security check: set its cookie, retry once
+      if (m && !challenged) { challenged = true; document.cookie = m[1] + '; path=/; secure; samesite=lax'; return api(action, data, method); }
+      const er = new Error('The portal isn’t available on this copy of the site.'); er.offline = true; throw er;
+    }
+    const j = await r.json();
+    if (!j.ok) { const er = new Error(j.error || 'Something went wrong. Please try again.'); er.signin = !!j.signin; throw er; }
+    return j;
+  }
 
   // ---------- State ----------
   const blank = () => ({ user: null, sample: false, profile: {}, orders: [], cart: [], pay: [] });
-  let S;
-  S = blank();
-  const save = () => {}; // Preview: state is held in memory. A live portal saves to ESP's order system.
+  let S = blank();
 
   const sampleData = () => ({
     user: { email: 'buyer@sample-company.example' }, sample: true,
     profile: { company: 'Sample Company (demo)', contact: 'Demo Buyer', email: 'buyer@sample-company.example', phone: '', ship: 'Sample Company Warehouse\n123 Example Way\nAnytown, USA', bill: 'Net terms per agreement. PO required on every order.' },
     orders: [
-      { id: 'ESP-1063', date: '2026-10-22', status: 'Quote sent', po: 'PO-3318', pay: 'Visa •••• 4242', items: [
+      { id: 'ESP-1063', date: '2026-10-22', status: 'Quote sent', po: 'PO-3318', pay: 'Secure payment link (Card)', message: 'Your quote is ready. We emailed it with the FCC testing timeline; reply to approve and we’ll schedule production.', items: [
         { id: 'headphones', qty: 800, opt: 'Headphones + matching stand' },
         { id: 'svc-cert', qty: 1, note: 'FCC review and third-party lab testing before the holiday shipment.' }] },
       { id: 'ESP-1057', date: '2026-10-06', status: 'In production', po: 'PO-3290', pay: 'Invoice (net terms)', items: [
@@ -48,57 +70,129 @@
       { id: 'ESP-1042', date: '2026-09-18', status: 'Delivered', po: 'PO-3204', pay: 'Invoice (net terms)', items: [
         { id: 'lighter', qty: 2000, opt: 'Flexible-neck candle / BBQ' },
         { id: 'mini330', qty: 500, opt: 'Light wood' }] },
-      { id: 'ESP-0998', date: '2026-06-30', status: 'Delivered', po: 'PO-3011', pay: 'Visa •••• 4242', items: [
+      { id: 'ESP-0998', date: '2026-06-30', status: 'Delivered', po: 'PO-3011', pay: 'Secure payment link (Card)', items: [
         { id: 'lighter', qty: 1500, opt: 'Pocket' },
         { id: 'umbrella', qty: 800, opt: 'Ripple Effect' }] },
     ],
     cart: [],
     pay: [
-      { id: 'pm1', type: 'card', brand: 'Visa', last4: '4242', exp: '08/28', name: 'Demo Buyer', label: 'Purchasing card', isDefault: true, status: 'active' },
-      { id: 'pm2', type: 'terms', terms: 'Net terms per agreement', ap: 'ap@sample-company.example', po: 'Yes', status: 'active' }
+      { id: 1, type: 'link', via: 'Card', ap: 'ap@sample-company.example', isDefault: true, status: 'active' },
+      { id: 2, type: 'terms', terms: 'Net 30', ap: 'ap@sample-company.example', po: 'Yes', status: 'active' }
     ]
   });
 
   // ---------- Helpers ----------
-  const toast = msg => { const t = $('#pp-toast'); t.innerHTML = esc(msg).replace(/\bESPi\b/g, '<span class="espi">ESP<span>i</span></span>'); t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600); };
+  const toast = msg => { const t = $('#pp-toast'); t.innerHTML = esc(msg).replace(/\bESPi\b/g, '<span class="espi">ESP<span>i</span></span>'); t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 3200); };
   const fmtDate = d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const qtyLabel = it => byId(it.id)?.kind === 'services' ? 'Service' : Number(it.qty).toLocaleString('en-US') + ' units';
+  const qtyLabel = it => itemKind(it) === 'services' ? 'Service' : Number(it.qty).toLocaleString('en-US') + ' units';
+  const validEmail = v => /^\S+@\S+\.\S+$/.test(v);
+  const pwProblem = p => p.length < 10 ? 'Use at least 10 characters for the password.' : (!/[A-Za-z]/.test(p) || !/\d/.test(p)) ? 'Use both letters and numbers in the password.' : '';
+  const busy = (form, on) => { const b = form.querySelector('button[type=submit]'); if (b) { b.disabled = on; b.setAttribute('aria-busy', String(on)); } };
+  const handleErr = (e, statusEl) => {
+    if (e.signin && !S.sample) { S = blank(); CSRF = ''; showAuth(); toast(e.message); return; }
+    if (statusEl) statusEl.textContent = e.message; else toast(e.message);
+  };
   const addToCart = (item, quiet) => {
-    const c = byId(item.id); if (!c) return;
+    const c = byId(item.id); if (!c) { if (!quiet) toast('That product is no longer in the catalog. Contact us to reorder it.'); return; }
     const ex = S.cart.find(x => x.id === item.id && (x.opt || '') === (item.opt || '') && c.kind === 'goods');
     if (ex) ex.qty = Number(ex.qty) + Number(item.qty);
     else S.cart.push({ id: item.id, qty: c.kind === 'services' ? 1 : Math.max(1, Number(item.qty) || 1), opt: item.opt || '', note: item.note || '' });
-    save(); renderCount(); if (!quiet) toast(c.name + ' added to your order request');
+    renderCount(); if (!quiet) toast(c.name + ' added to your order request');
   };
-  const thumb = c => c.kind === 'goods'
-    ? `<img src="${c.img}" alt="" loading="lazy" width="96" height="72">`
-    : `<span class="pp-letter" aria-hidden="true">${c.letter}</span>`;
+  const thumb = it => { const c = byId(it.id);
+    if (c && c.kind === 'goods') return `<img src="${c.img}" alt="" loading="lazy" width="96" height="72">`;
+    const letter = c ? c.letter : (itemName(it)[0] || '•');
+    return `<span class="pp-letter" aria-hidden="true">${esc(letter)}</span>`; };
 
   // ---------- Auth ----------
-  function showAuth() {
+  function showAuth(view) {
     $('#pp-auth').hidden = false; $('#pp-app').hidden = true;
     $('#pp-signout').hidden = true; $('#pp-who').hidden = true;
+    const v = view || (RESET ? 'reset' : ({ '#request': 'request', '#forgot': 'forgot' })[location.hash] || 'signin');
+    $('#pp-signin').hidden = v !== 'signin'; $('#pp-request').hidden = v !== 'request';
+    $('#pp-forgot').hidden = v !== 'forgot'; $('#pp-reset').hidden = v !== 'reset';
   }
   function showApp() {
     $('#pp-auth').hidden = true; $('#pp-app').hidden = false;
     $('#pp-signout').hidden = false; const w = $('#pp-who'); w.hidden = false;
     w.textContent = S.profile.company || S.user.email;
-    renderAll(); go(location.hash.replace('#', '') || 'overview', true);
+    renderAll(); const h = location.hash.replace('#', ''); go(h && h !== 'request' && h !== 'signin' ? h : 'overview', true);
   }
-  $('#pp-signin').addEventListener('submit', e => {
+  async function loadLive() {
+    const [o, p] = await Promise.all([api('orders'), api('pay_list')]);
+    S.orders = o.orders; S.pay = p.pay;
+  }
+  $('#pp-to-request').addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', '#request'); showAuth('request'); $('#rq-company').focus(); });
+  $('#pp-to-signin').addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', 'portal.html'); showAuth('signin'); $('#pp-email').focus(); });
+
+  $('#pp-signin').addEventListener('submit', async e => {
     e.preventDefault();
-    const em = $('#pp-email'), pw = $('#pp-pass'), st = $('#pp-signin .pc-status');
-    const badE = !/^\S+@\S+\.\S+$/.test(em.value.trim()), badP = !pw.value;
+    const f = e.target, em = $('#pp-email'), pw = $('#pp-pass'), st = $('#pp-signin .pc-status');
+    const badE = !validEmail(em.value.trim()), badP = !pw.value;
     em.closest('.pfield').classList.toggle('err', badE); pw.closest('.pfield').classList.toggle('err', badP);
     if (badE || badP) { st.textContent = 'Please enter your business email and password.'; return; }
-    const email = em.value.trim();
-    if (!S.user || S.user.email !== email || S.sample) S = { ...blank(), user: { email }, profile: { email } };
-    save(); showApp();
+    st.textContent = 'Signing in…'; busy(f, true);
+    try {
+      const r = await api('login', { email: em.value.trim(), password: pw.value, keep: $('#pp-keep').checked });
+      CSRF = r.csrf;
+      if (r.role === 'admin') { window.location.href = 'admin.html'; return; }
+      await boot(); pw.value = ''; st.textContent = '';
+    } catch (err) { st.textContent = err.message; }
+    finally { busy(f, false); }
   });
-  $('#pp-demo').addEventListener('click', () => { S = sampleData(); save(); showApp(); });
-  $('#pp-signout').addEventListener('click', () => {
-    if (S.sample) S = blank(); else S.user = null;
-    save(); history.replaceState(null, '', 'portal.html'); showAuth();
+
+  $('#pp-request').addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = e.target, st = f.querySelector('.pc-status');
+    const v = id => $('#' + id).value.trim();
+    const checks = [['rq-company', !v('rq-company')], ['rq-name', !v('rq-name')], ['rq-email', !validEmail(v('rq-email'))], ['rq-pass', !!pwProblem($('#rq-pass').value)], ['rq-pass2', $('#rq-pass2').value !== $('#rq-pass').value]];
+    checks.forEach(([id, bad]) => $('#' + id).closest('.pfield').classList.toggle('err', bad));
+    const firstBad = checks.find(c => c[1]);
+    if (firstBad) {
+      st.textContent = firstBad[0] === 'rq-pass' ? pwProblem($('#rq-pass').value) : firstBad[0] === 'rq-pass2' ? 'The two passwords don’t match.' : 'Please fill in the highlighted fields.';
+      $('#' + firstBad[0]).focus(); return;
+    }
+    st.textContent = 'Sending…'; busy(f, true);
+    try {
+      await api('request_account', { company: v('rq-company'), name: v('rq-name'), email: v('rq-email'), phone: v('rq-phone'), password: $('#rq-pass').value, message: v('rq-msg'), website: $('#rq-website').value });
+      f.reset(); st.textContent = 'Thank you. Your request was sent to the ESPi team. We’ll email you when your account is approved, then you can sign in with the password you chose.';
+      st.innerHTML = esc(st.textContent).replace('ESPi', '<span class="espi">ESP<span>i</span></span>');
+    } catch (err) { st.textContent = err.message; }
+    finally { busy(f, false); }
+  });
+
+  $('#pp-to-forgot').addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', '#forgot'); showAuth('forgot'); const fe = $('#fg-email'); fe.value = $('#pp-email').value.trim(); fe.focus(); });
+  document.querySelectorAll('.pp-back-signin').forEach(a => a.addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', 'portal.html'); showAuth('signin'); $('#pp-email').focus(); }));
+  $('#pp-forgot').addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = e.target, st = f.querySelector('.pc-status'), em = $('#fg-email');
+    const bad = !validEmail(em.value.trim()); em.closest('.pfield').classList.toggle('err', bad);
+    if (bad) { st.textContent = 'Enter the email you use to sign in.'; em.focus(); return; }
+    st.textContent = 'Sending…'; busy(f, true);
+    try { await api('request_reset', { email: em.value.trim() }); st.textContent = 'If that email matches an active account, a reset link is on its way. Check your inbox and spam folder.'; }
+    catch (err) { st.textContent = err.offline ? 'Password reset is available at espinnovations.com/portal.html.' : err.message; }
+    finally { busy(f, false); }
+  });
+  $('#pp-reset').addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = e.target, st = f.querySelector('.pc-status'), p1 = $('#rs-pass'), p2 = $('#rs-pass2');
+    const prob = pwProblem(p1.value), mism = p1.value !== p2.value;
+    p1.closest('.pfield').classList.toggle('err', !!prob); p2.closest('.pfield').classList.toggle('err', !prob && mism);
+    if (prob || mism) { st.textContent = prob || 'The two passwords don’t match.'; return; }
+    st.textContent = 'Saving…'; busy(f, true);
+    try {
+      await api('do_reset', { token: RESET, password: p1.value });
+      f.reset(); history.replaceState(null, '', 'portal.html');
+      showAuth('signin'); $('#pp-signin .pc-status').textContent = 'Your password was changed. Sign in with your new password.'; $('#pp-email').focus();
+    } catch (err) { st.textContent = err.message; }
+    finally { busy(f, false); }
+  });
+
+  $('#pp-demo').addEventListener('click', () => { S = sampleData(); showApp(); });
+  $('#pp-signout').addEventListener('click', async () => {
+    if (!S.sample) { try { await api('logout'); } catch (e) { /* ignore */ } }
+    S = blank(); CSRF = '';
+    history.replaceState(null, '', 'portal.html'); showAuth('signin');
   });
 
   // ---------- Tabs ----------
@@ -112,6 +206,7 @@
     if (tab === 'history') renderHistory();
     if (tab === 'overview') renderOverview();
     if (tab === 'payment') renderPay();
+    if (tab === 'account') renderProfile();
     if (!noScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   $$('.pp-tabs button').forEach(b => b.addEventListener('click', () => go(b.dataset.tab)));
@@ -121,13 +216,14 @@
   function renderCount() { const n = S.cart.length; $('#pp-count').textContent = n; $('#pp-count').classList.toggle('has', n > 0); }
 
   function orderCard(o, compact) {
-    const step = STEPS.indexOf(o.status);
-    const items = o.items.map(it => { const c = byId(it.id); if (!c) return '';
-      return `<li>${thumb(c)}<div><b>${esc(c.name)}</b><span>${esc(it.opt || (c.kind === 'services' ? c.tag : ''))}</span></div><em>${qtyLabel(it)}</em></li>`; }).join('');
+    const step = o.status === 'Cancelled' ? 5 : STEPS.indexOf(o.status);
+    const items = o.items.map(it => `<li>${thumb(it)}<div><b>${esc(itemName(it))}</b><span>${esc(it.opt || (itemKind(it) === 'services' ? (byId(it.id)?.tag || 'Service') : ''))}</span></div><em>${qtyLabel(it)}</em></li>`).join('');
     return `<article class="pp-order">
       <header><div><h3>${esc(o.id)}</h3><p>${fmtDate(o.date)}${o.po ? ' · ' + esc(o.po) : ''}${o.pay ? ' · ' + esc(o.pay) : ''}</p></div>
         <span class="pp-status s${step}">${esc(o.status)}</span></header>
-      ${compact ? '' : `<ol class="pp-track" aria-label="Order progress">${STEPS.map((s, i) => `<li class="${i <= step ? 'done' : ''}">${s}</li>`).join('')}</ol>`}
+      ${compact || o.status === 'Cancelled' ? '' : `<ol class="pp-track" aria-label="Order progress">${STEPS.map((s, i) => `<li class="${i <= step ? 'done' : ''}">${s}</li>`).join('')}</ol>`}
+      ${o.pay_url && o.status !== 'Cancelled' ? `<div class="pp-paybar"><span>A secure payment link is ready for this order.</span><a class="btn pp-btn-sm" href="${esc(o.pay_url)}" target="_blank" rel="noopener noreferrer">Pay now</a></div>` : ''}
+      ${o.message ? `<div class="pp-msg"><b>Message from the <span class="espi">ESP<span>i</span></span> team</b>${esc(o.message)}</div>` : ''}
       <ul class="pp-lines">${items}</ul>
       <footer><button type="button" class="btn pp-btn-sm" data-reorder-order="${esc(o.id)}">Reorder all</button></footer>
     </article>`;
@@ -136,7 +232,8 @@
   function renderOverview() {
     $('#pp-hello').textContent = 'Hello, ' + (S.profile.contact || S.profile.company || 'there') + '.';
     $('#pp-sample-note').hidden = !S.sample;
-    $('#st-open').textContent = S.orders.filter(o => o.status !== 'Delivered').length;
+    $('#pp-pw-note').hidden = !(S.user && S.user.must_change);
+    $('#st-open').textContent = S.orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').length;
     $('#st-total').textContent = S.orders.length;
     $('#st-items').textContent = reorderList().length;
     const r = $('#pp-recent');
@@ -182,7 +279,7 @@
 
   function reorderList() {
     const map = new Map();
-    [...S.orders].sort((a, b) => a.date.localeCompare(b.date)).forEach(o => o.items.forEach(it => {
+    [...S.orders].filter(o => o.status !== 'Cancelled').sort((a, b) => a.date.localeCompare(b.date)).forEach(o => o.items.forEach(it => {
       const c = byId(it.id); if (!c || c.kind !== 'goods') return;
       const k = it.id + '|' + (it.opt || '');
       const prev = map.get(k);
@@ -196,7 +293,7 @@
     el.innerHTML = `<div class="pp-table" role="table" aria-label="Products you buy">
       <div class="pp-tr pp-th" role="row"><span role="columnheader">Product</span><span role="columnheader">Last ordered</span><span role="columnheader">Quantity</span><span role="columnheader"><span class="sr">Action</span></span></div>
       ${list.map((r, i) => { const c = byId(r.id); return `<form class="pp-tr" role="row" data-i="${i}">
-        <span class="pp-prod" role="cell">${thumb(c)}<span><b>${esc(c.name)}</b><small>${esc(r.opt || c.tag)}${r.times > 1 ? ' · ordered ' + r.times + ' times' : ''}</small></span></span>
+        <span class="pp-prod" role="cell">${thumb(r)}<span><b>${esc(c.name)}</b><small>${esc(r.opt || c.tag)}${r.times > 1 ? ' · ordered ' + r.times + ' times' : ''}</small></span></span>
         <span role="cell" class="pp-last">${fmtDate(r.last)}</span>
         <span role="cell"><label class="sr" for="rq-${i}">Quantity</label><input id="rq-${i}" class="pp-qty" type="number" min="1" value="${r.qty}" inputmode="numeric"></span>
         <span role="cell"><button class="btn pp-btn-sm" type="submit">Reorder</button></span>
@@ -217,7 +314,7 @@
     const b = e.target.closest('[data-reorder-order]'); if (!b) return;
     const o = S.orders.find(x => x.id === b.dataset.reorderOrder); if (!o) return;
     o.items.forEach(it => addToCart(it, true));
-    toast('All items from ' + o.id + ' added. Review quantities before sending.');
+    toast('Items from ' + o.id + ' added. Review quantities before sending.');
     go('cart');
   });
 
@@ -228,7 +325,7 @@
       ck.hidden = true; return;
     }
     el.innerHTML = `<ul class="pp-cartlist">${S.cart.map((it, i) => { const c = byId(it.id); return `<li>
-      ${thumb(c)}
+      ${thumb(it)}
       <div class="pp-cl-main"><b>${esc(c.name)}</b><span>${esc(it.opt || c.tag)}</span>${it.note ? `<p>${esc(it.note)}</p>` : ''}</div>
       ${c.kind === 'goods' ? `<label class="pp-cl-q"><span>Units</span><input type="number" min="1" value="${it.qty}" data-q="${i}" inputmode="numeric"></label>` : `<span class="pp-cl-q pp-svc-l">Service</span>`}
       <button type="button" class="pp-x" data-rm="${i}" aria-label="Remove ${esc(c.name)}">&times;</button>
@@ -236,142 +333,132 @@
     ck.hidden = false;
     if (!$('#ck-ship').value) $('#ck-ship').value = S.profile.ship || '';
     renderPayPick();
-    el.querySelectorAll('[data-q]').forEach(inp => inp.addEventListener('change', () => { S.cart[inp.dataset.q].qty = Math.max(1, Number(inp.value) || 1); inp.value = S.cart[inp.dataset.q].qty; save(); }));
-    el.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => { S.cart.splice(Number(b.dataset.rm), 1); save(); renderCount(); renderCart(); }));
+    el.querySelectorAll('[data-q]').forEach(inp => inp.addEventListener('change', () => { S.cart[inp.dataset.q].qty = Math.max(1, Number(inp.value) || 1); inp.value = S.cart[inp.dataset.q].qty; }));
+    el.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => { S.cart.splice(Number(b.dataset.rm), 1); renderCount(); renderCart(); }));
   }
-  $('#pp-checkout').addEventListener('submit', e => {
+  $('#pp-checkout').addEventListener('submit', async e => {
     e.preventDefault(); if (!S.cart.length) return;
-    const n = Math.max(1000, ...S.orders.map(o => parseInt(o.id.split('-')[1], 10) || 0)) + 1;
+    const f = e.target;
     const picked = $('#ck-pay input[name=ckpay]:checked');
     if (!picked) { toast('Choose a payment method first'); $('#ck-pay').scrollIntoView({ block: 'center' }); return; }
-    const pm = S.pay.find(x => x.id === picked.value);
-    const payText = pm ? payShort(pm) : 'To be chosen at quote approval';
-    const order = { id: 'ESP-' + n, pay: payText, date: new Date().toISOString().slice(0, 10), status: 'Request sent',
-      po: $('#ck-po').value.trim(), ship: $('#ck-ship').value.trim(), want: $('#ck-date').value, notes: $('#ck-notes').value.trim(),
-      items: S.cart.map(x => ({ ...x })) };
-    const lines = order.items.map(it => { const c = byId(it.id);
-      return '- ' + c.name + (it.opt ? ' (' + it.opt + ')' : '') + ': ' + (c.kind === 'goods' ? it.qty + ' units' : 'service') + (it.note ? '\n  Brief: ' + it.note : ''); }).join('\n');
-    const p = S.profile;
-    const body = `Order request ${order.id}\n\nCompany: ${p.company || ''}\nContact: ${p.contact || ''}\nEmail: ${p.email || S.user.email}\nPhone: ${p.phone || ''}\nPO number: ${order.po}\nRequested delivery: ${order.want}\nPayment method: ${payText} (use only after quote approval)\n\nItems:\n${lines}\n\nShip to:\n${order.ship}\n\nNotes:\n${order.notes}`;
-    S.orders.unshift(order); S.cart = []; save(); renderCount();
+    const pm = S.pay.find(x => String(x.id) === picked.value);
+    const fields = { po: $('#ck-po').value.trim(), want: $('#ck-date').value, ship: $('#ck-ship').value.trim(), notes: $('#ck-notes').value.trim() };
+    const items = S.cart.map(x => ({ ...x, name: byId(x.id).name, kind: byId(x.id).kind }));
+    let order;
+    if (S.sample) {
+      const n = Math.max(1000, ...S.orders.map(o => parseInt(o.id.split('-')[1], 10) || 0)) + 1;
+      order = { id: 'ESP-' + n, pay: pm ? payShort(pm) : 'To be chosen at quote approval', date: new Date().toISOString().slice(0, 10), status: 'Request sent', ...fields, items };
+    } else {
+      busy(f, true);
+      try { order = (await api('order_create', { ...fields, items, pay_id: pm ? pm.id : 0 })).order; }
+      catch (err) { handleErr(err); return; }
+      finally { busy(f, false); }
+    }
+    S.orders.unshift(order); S.cart = []; renderCount();
     $('#ck-po').value = ''; $('#ck-date').value = ''; $('#ck-notes').value = '';
-    if (!S.sample) window.location.href = 'mailto:orders@espinnovations.com?subject=' + encodeURIComponent('Order request ' + order.id + ' from ' + (p.company || S.user.email)) + '&body=' + encodeURIComponent(body);
-    toast(S.sample ? 'Sample order ' + order.id + ' saved. In a live account it goes straight to the ESPi team.' : 'Order request ' + order.id + ' saved. Your email app will open to send it.');
+    toast(S.sample ? 'Sample order ' + order.id + ' saved. In a live account it goes straight to the ESPi team.' : 'Order request ' + order.id + ' sent to the ESPi team. We’ll reply with a confirmed quote.');
     go('history');
   });
 
   // Profile
   const PF = { company: 'pf-company', contact: 'pf-contact', email: 'pf-email', phone: 'pf-phone', ship: 'pf-ship', bill: 'pf-bill' };
-  function renderProfile() { Object.entries(PF).forEach(([k, id]) => $('#' + id).value = S.profile[k] || ''); $('#pp-profile .pp-ok').textContent = ''; }
-  $('#pp-profile').addEventListener('submit', e => {
-    e.preventDefault();
+  function renderProfile() {
+    Object.entries(PF).forEach(([k, id]) => $('#' + id).value = S.profile[k] || ''); $('#pp-profile .pp-ok').textContent = '';
+    const pwBlock = !S.sample; $('#pw-h').hidden = !pwBlock; $('#pp-password').hidden = !pwBlock;
+    $('#pw-user').value = S.user ? S.user.email : '';
+  }
+  $('#pp-profile').addEventListener('submit', async e => {
+    e.preventDefault(); const f = e.target, st = $('#pp-profile .pp-ok');
     const co = $('#pf-company'), em = $('#pf-email');
-    const badC = !co.value.trim(), badE = !/^\S+@\S+\.\S+$/.test(em.value.trim());
+    const badC = !co.value.trim(), badE = !validEmail(em.value.trim());
     co.closest('.pfield').classList.toggle('err', badC); em.closest('.pfield').classList.toggle('err', badE);
-    if (badC || badE) { $('#pp-profile .pp-ok').textContent = 'Company name and a valid email are required.'; return; }
-    Object.entries(PF).forEach(([k, id]) => S.profile[k] = $('#' + id).value.trim()); save();
-    $('#pp-who').textContent = S.profile.company; $('#pp-profile .pp-ok').textContent = 'Profile saved.';
+    if (badC || badE) { st.textContent = 'Company name and a valid email are required.'; return; }
+    const data = {}; Object.entries(PF).forEach(([k, id]) => data[k] = $('#' + id).value.trim());
+    if (S.sample) S.profile = { ...S.profile, ...data };
+    else { busy(f, true); try { S.profile = (await api('profile_save', data)).profile; } catch (err) { handleErr(err, st); return; } finally { busy(f, false); } }
+    $('#pp-who').textContent = S.profile.company; st.textContent = 'Profile saved.';
+  });
+  $('#pp-password').addEventListener('submit', async e => {
+    e.preventDefault(); const f = e.target, st = f.querySelector('.pp-ok');
+    const cur = $('#pw-cur').value, nw = $('#pw-new').value, nw2 = $('#pw-new2').value;
+    const prob = !cur ? 'Enter your current password.' : pwProblem(nw) || (nw !== nw2 ? 'The new passwords don’t match.' : '');
+    if (prob) { st.textContent = prob; return; }
+    busy(f, true);
+    try { await api('change_password', { current: cur, password: nw }); f.reset(); st.textContent = 'Password updated.'; if (S.user) S.user.must_change = false; }
+    catch (err) { handleErr(err, st); }
+    finally { busy(f, false); }
   });
 
-
   // ---------- Payment methods ----------
-  // Preview: full card/bank numbers are validated, then discarded. Only type + last 4 are kept, in memory.
-  // Live portal: fields are replaced by a PCI-compliant processor's hosted fields (e.g. Stripe Elements),
-  // which return a token; ESP stores only the token, brand and last 4.
-  const digits = v => String(v || '').replace(/\D/g, '');
-  const luhn = n => { let sum = 0, alt = false; for (let i = n.length - 1; i >= 0; i--) { let d = +n[i]; if (alt) { d *= 2; if (d > 9) d -= 9; } sum += d; alt = !alt; } return n.length >= 12 && sum % 10 === 0; };
-  const brandOf = n => /^4/.test(n) ? 'Visa' : /^(5[1-5]|2(2[2-9]|[3-6]\d|7[01]|720))/.test(n) ? 'Mastercard' : /^3[47]/.test(n) ? 'American Express' : /^(6011|65|64[4-9])/.test(n) ? 'Discover' : '';
-  const abaOk = r => { if (!/^\d{9}$/.test(r)) return false; const d = r.split('').map(Number); return (3 * (d[0] + d[3] + d[6]) + 7 * (d[1] + d[4] + d[7]) + (d[2] + d[5] + d[8])) % 10 === 0; };
-  const payShort = p => p.type === 'card' ? `${p.brand} •••• ${p.last4}` : p.type === 'ach' ? `${p.bank} •••• ${p.last4} (ACH)` : p.type === 'terms' ? 'Invoice (net terms)' : 'Wire transfer';
-  const payDetail = p => p.type === 'card' ? `Expires ${p.exp}${p.name ? ' · ' + p.name : ''}` : p.type === 'ach' ? `${p.acctType}${p.holder ? ' · ' + p.holder : ''}` : p.type === 'terms' ? `${p.terms}${p.ap ? ' · Invoices to ' + p.ap : ''}` : `Remittance contact: ${p.ap || ''}`;
-  const payIcon = t => ({ card: '<svg viewBox="0 0 32 22" aria-hidden="true"><rect x="1" y="1" width="30" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1 7h30" stroke="currentColor" stroke-width="3"/><path d="M5 15h8" stroke="currentColor" stroke-width="1.5"/></svg>',
-    ach: '<svg viewBox="0 0 32 22" aria-hidden="true"><path d="M3 8 16 2l13 6M5 9v9m6-9v9m10-9v9m6-9v9M2 20h28" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+  const payShort = p => p.type === 'link' ? `Secure payment link (${p.via === 'ACH' || p.via === 'ACH bank transfer' ? 'ACH' : 'Card'})` : p.type === 'terms' ? 'Invoice (net terms)' : p.type === 'wire' ? 'Wire transfer' : 'Payment method';
+  const payDetail = p => p.type === 'link' ? `Links emailed to ${p.ap || ''}` : p.type === 'terms' ? `${p.terms || ''}${p.ap ? ' · Invoices to ' + p.ap : ''}` : `Remittance contact: ${p.ap || ''}`;
+  const payIcon = t => ({ link: '<svg viewBox="0 0 32 22" aria-hidden="true"><rect x="1" y="1" width="30" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1 7h30" stroke="currentColor" stroke-width="3"/><path d="M5 15h8" stroke="currentColor" stroke-width="1.5"/></svg>',
     terms: '<svg viewBox="0 0 32 22" aria-hidden="true"><path d="M8 1h12l5 5v15H8z M20 1v5h5 M11 11h10 M11 15h10" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
-    wire: '<svg viewBox="0 0 32 22" aria-hidden="true"><path d="M2 7h24l-5-5M30 15H6l5 5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>' }[t]);
+    wire: '<svg viewBox="0 0 32 22" aria-hidden="true"><path d="M2 7h24l-5-5M30 15H6l5 5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>' }[t] || '');
   const usable = p => p.status === 'active';
   const ensureDefault = () => { if (!S.pay.some(p => p.isDefault && usable(p))) { S.pay.forEach(p => p.isDefault = false); const f = S.pay.find(usable); if (f) f.isDefault = true; } };
-  const addPay = (p, makeDefault) => {
-    p.id = 'pm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-    if (makeDefault && usable(p)) S.pay.forEach(x => x.isDefault = false), p.isDefault = true;
-    S.pay.push(p); ensureDefault(); save(); renderPay();
-  };
 
   function renderPay() {
     const el = $('#pm-list');
-    if (!S.pay.length) { el.innerHTML = `<div class="pp-empty"><p>No payment methods saved yet. Add a company card, bank account, net terms or wire transfer below.</p></div>`; return; }
+    if (!S.pay.length) { el.innerHTML = `<div class="pp-empty"><p>No payment methods saved yet. Add a payment link, net terms or wire transfer below.</p></div>`; return; }
     el.innerHTML = S.pay.map(p => `<article class="pm-item${p.isDefault ? ' is-default' : ''}">
       <span class="pm-ico">${payIcon(p.type)}</span>
-      <div class="pm-main"><b>${esc(payShort(p))}${p.label ? ` <small>${esc(p.label)}</small>` : ''}</b><span>${esc(payDetail(p))}</span></div>
-      <div class="pm-flags">${p.isDefault ? '<span class="pm-tag pm-def">Default</span>' : ''}${p.status === 'pending' ? '<span class="pm-tag pm-pend">Pending approval</span>' : ''}</div>
+      <div class="pm-main"><b>${esc(payShort(p))}</b><span>${esc(payDetail(p))}</span></div>
+      <div class="pm-flags">${p.isDefault ? '<span class="pm-tag pm-def">Default</span>' : ''}${p.status === 'pending' ? '<span class="pm-tag pm-pend">Pending approval</span>' : ''}${p.status === 'declined' ? '<span class="pm-tag pm-pend">Not approved</span>' : ''}</div>
       <div class="pm-acts">${!p.isDefault && usable(p) ? `<button type="button" class="pm-link" data-pm-default="${p.id}">Make default</button>` : ''}<button type="button" class="pm-link pm-rm" data-pm-rm="${p.id}" aria-label="Remove ${esc(payShort(p))}">Remove</button></div>
     </article>`).join('');
   }
-  $('#pm-list').addEventListener('click', e => {
+  $('#pm-list').addEventListener('click', async e => {
     const d = e.target.closest('[data-pm-default]'), r = e.target.closest('[data-pm-rm]');
-    if (d) { S.pay.forEach(p => p.isDefault = p.id === d.dataset.pmDefault); save(); renderPay(); toast('Default payment method updated'); }
-    if (r) { const p = S.pay.find(x => x.id === r.dataset.pmRm); if (!p || !confirm('Remove ' + payShort(p) + ' from your account?')) return;
-      S.pay = S.pay.filter(x => x.id !== p.id); ensureDefault(); save(); renderPay(); toast(payShort(p) + ' removed'); }
+    const id = (d || r) ? (d || r).dataset[d ? 'pmDefault' : 'pmRm'] : null; if (!id) return;
+    const p = S.pay.find(x => String(x.id) === id); if (!p) return;
+    if (r && !confirm('Remove ' + payShort(p) + ' from your account?')) return;
+    if (S.sample) {
+      if (d) S.pay.forEach(x => x.isDefault = x === p); else S.pay = S.pay.filter(x => x !== p);
+      ensureDefault();
+    } else {
+      try { S.pay = (await api(d ? 'pay_default' : 'pay_remove', { id: p.id })).pay; } catch (err) { handleErr(err); return; }
+    }
+    renderPay(); toast(d ? 'Default payment method updated' : payShort(p) + ' removed');
   });
 
-  let pmType = 'card';
   $$('.pm-types button').forEach(b => b.addEventListener('click', () => {
-    pmType = b.dataset.pmtype;
     $$('.pm-types button').forEach(x => x.setAttribute('aria-selected', String(x === b)));
-    $$('.pm-form').forEach(f => f.hidden = f.dataset.pmtype !== pmType);
+    $$('.pm-form').forEach(f => f.hidden = f.dataset.pmtype !== b.dataset.pmtype);
   }));
   const flag = (inp, bad) => { inp.closest('.pfield, .pm-check').classList.toggle('err', bad); return bad; };
-  const done = (f, msg) => { f.reset(); $$('.err', f).forEach(x => x.classList.remove('err')); f.querySelector('.pp-ok').textContent = ''; toast(msg); };
-
-  // Card
-  const ccNum = $('#cc-num');
-  ccNum.addEventListener('input', () => {
-    const d = digits(ccNum.value).slice(0, 19); const b = brandOf(d);
-    ccNum.value = b === 'American Express' ? d.replace(/^(\d{0,4})(\d{0,6})(\d{0,5}).*/, (m, a, b2, c) => [a, b2, c].filter(Boolean).join(' ')) : d.replace(/(\d{4})(?=\d)/g, '$1 ');
-    $('#cc-brand').textContent = b;
+  async function savePay(f, data, okMsg) {
+    const st = f.querySelector('.pp-ok');
+    if (S.sample) {
+      if (S.pay.some(p => p.type === data.type)) { st.textContent = 'That payment type is already on this sample account.'; return; }
+      const p = { id: Date.now(), status: data.type === 'terms' ? 'pending' : 'active', isDefault: false, ...data };
+      if (data.make_default && usable(p)) { S.pay.forEach(x => x.isDefault = false); p.isDefault = true; }
+      S.pay.push(p); ensureDefault();
+    } else {
+      busy(f, true);
+      try { S.pay = (await api('pay_add', data)).pay; } catch (err) { handleErr(err, st); return; } finally { busy(f, false); }
+    }
+    f.reset(); $$('.err', f).forEach(x => x.classList.remove('err')); st.textContent = ''; renderPay(); toast(okMsg);
+  }
+  $('#pm-link').addEventListener('submit', e => {
+    e.preventDefault(); const f = e.target, ap = $('#lk-ap').value.trim();
+    if (flag($('#lk-ap'), !validEmail(ap))) { f.querySelector('.pp-ok').textContent = 'Enter the email that should receive payment links.'; return; }
+    savePay(f, { type: 'link', ap, via: $('#lk-via').value, make_default: $('#lk-default').checked }, 'Secure payment link saved');
   });
-  $('#cc-exp').addEventListener('input', e => { const d = digits(e.target.value).slice(0, 4); e.target.value = d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d; });
-  $('#pm-card').addEventListener('submit', e => {
-    e.preventDefault(); const f = e.target, st = f.querySelector('.pp-ok');
-    const n = digits(ccNum.value), brand = brandOf(n), [mm, yy] = $('#cc-exp').value.split('/').map(Number), cvc = digits($('#cc-cvc').value), zip = $('#cc-zip').value.trim();
-    const now = new Date(), expOk = mm >= 1 && mm <= 12 && yy >= 0 && new Date(2000 + yy, mm, 1) > now;
-    const bad = [flag($('#cc-name'), !$('#cc-name').value.trim()), flag(ccNum, !luhn(n) || !brand), flag($('#cc-exp'), !expOk),
-      flag($('#cc-cvc'), cvc.length !== (brand === 'American Express' ? 4 : 3)), flag($('#cc-zip'), !/^\d{5}(-?\d{4})?$/.test(zip))].some(Boolean);
-    if (bad) { st.textContent = 'Please check the highlighted card details.'; return; }
-    if (S.pay.some(p => p.type === 'card' && p.last4 === n.slice(-4) && p.brand === brand)) { st.textContent = 'This card is already saved.'; return; }
-    addPay({ type: 'card', brand, last4: n.slice(-4), exp: $('#cc-exp').value, name: $('#cc-name').value.trim(), label: $('#cc-label').value.trim(), status: 'active' }, $('#cc-default').checked);
-    $('#cc-brand').textContent = ''; done(f, brand + ' •••• ' + n.slice(-4) + ' saved');
-  });
-  // ACH
-  $('#pm-ach').addEventListener('submit', e => {
-    e.preventDefault(); const f = e.target, st = f.querySelector('.pp-ok');
-    const r = digits($('#ach-routing').value), a = digits($('#ach-acct').value);
-    const bad = [flag($('#ach-holder'), !$('#ach-holder').value.trim()), flag($('#ach-bank'), !$('#ach-bank').value.trim()),
-      flag($('#ach-routing'), !abaOk(r)), flag($('#ach-acct'), a.length < 4 || a.length > 17), flag($('#ach-auth'), !$('#ach-auth').checked)].some(Boolean);
-    if (bad) { st.textContent = !abaOk(r) && r.length === 9 ? 'That routing number isn’t valid. Please check it.' : 'Please check the highlighted fields and confirm the authorization.'; return; }
-    addPay({ type: 'ach', bank: $('#ach-bank').value.trim(), holder: $('#ach-holder').value.trim(), acctType: $('#ach-type').value, last4: a.slice(-4), status: 'active' }, $('#ach-default').checked);
-    done(f, 'Bank account •••• ' + a.slice(-4) + ' saved');
-  });
-  // Net terms
   $('#pm-terms').addEventListener('submit', e => {
-    e.preventDefault(); const f = e.target, st = f.querySelector('.pp-ok'); const ap = $('#nt-ap').value.trim();
-    if (flag($('#nt-ap'), !/^\S+@\S+\.\S+$/.test(ap))) { st.textContent = 'Enter your accounts payable email.'; return; }
-    if (S.pay.some(p => p.type === 'terms')) { st.textContent = 'Your account already has a net terms request or approval.'; return; }
-    addPay({ type: 'terms', terms: $('#nt-terms').value + ' requested', ap, po: $('#nt-po').value, tax: $('#nt-tax').value.trim(), status: S.sample ? 'active' : 'pending' });
-    if (!S.sample) window.location.href = 'mailto:accounts@espinnovations.com?subject=' + encodeURIComponent('Net terms request from ' + (S.profile.company || S.user.email)) + '&body=' + encodeURIComponent(`Company: ${S.profile.company || ''}\nAccounts payable email: ${ap}\nTerms requested: ${$('#nt-terms').value}\nTax ID / EIN: ${$('#nt-tax').value.trim()}\nPO required on invoices: ${$('#nt-po').value}`);
-    done(f, S.sample ? 'Sample net terms added' : 'Net terms requested. Our accounts team will confirm.');
+    e.preventDefault(); const f = e.target, ap = $('#nt-ap').value.trim();
+    if (flag($('#nt-ap'), !validEmail(ap))) { f.querySelector('.pp-ok').textContent = 'Enter your accounts payable email.'; return; }
+    savePay(f, { type: 'terms', ap, terms: $('#nt-terms').value, po: $('#nt-po').value, tax: $('#nt-tax').value.trim() }, 'Net terms requested. Our accounts team will review and confirm.');
   });
-  // Wire
   $('#pm-wire').addEventListener('submit', e => {
-    e.preventDefault(); const f = e.target, st = f.querySelector('.pp-ok'); const ap = $('#wr-ap').value.trim();
-    if (flag($('#wr-ap'), !/^\S+@\S+\.\S+$/.test(ap))) { st.textContent = 'Enter a remittance contact email.'; return; }
-    if (S.pay.some(p => p.type === 'wire')) { st.textContent = 'Wire transfer is already on your account.'; return; }
-    addPay({ type: 'wire', ap, status: 'active' }, $('#wr-default').checked);
-    done(f, 'Wire transfer saved');
+    e.preventDefault(); const f = e.target, ap = $('#wr-ap').value.trim();
+    if (flag($('#wr-ap'), !validEmail(ap))) { f.querySelector('.pp-ok').textContent = 'Enter a remittance contact email.'; return; }
+    savePay(f, { type: 'wire', ap, make_default: $('#wr-default').checked }, 'Wire transfer saved');
   });
 
   function renderPayPick() {
     const el = $('#ck-pay'); const def = S.pay.find(p => p.isDefault && usable(p));
-    const opts = S.pay.map(p => `<label class="pm-opt${usable(p) ? '' : ' is-off'}"><input type="radio" name="ckpay" value="${p.id}"${usable(p) ? '' : ' disabled'}${def && def.id === p.id ? ' checked' : ''}>
+    const opts = S.pay.filter(p => p.status !== 'declined').map(p => `<label class="pm-opt${usable(p) ? '' : ' is-off'}"><input type="radio" name="ckpay" value="${p.id}"${usable(p) ? '' : ' disabled'}${def && def.id === p.id ? ' checked' : ''}>
       <span class="pm-ico">${payIcon(p.type)}</span><span><b>${esc(payShort(p))}</b><small>${usable(p) ? esc(payDetail(p)) : 'Pending approval by our accounts team'}</small></span>${p.isDefault ? '<span class="pm-tag pm-def">Default</span>' : ''}</label>`).join('');
     el.innerHTML = opts + `<label class="pm-opt"><input type="radio" name="ckpay" value="later"${def ? '' : ' checked'}><span class="pm-ico">${payIcon('terms')}</span><span><b>Choose when I approve the quote</b><small>We&rsquo;ll ask for payment details with your quote</small></span></label>
       <button type="button" class="pm-link pm-add" data-go="payment">+ Add or manage payment methods</button>`;
@@ -379,5 +466,17 @@
 
   function renderAll() { renderCount(); renderCatalog(); renderProfile(); renderOverview(); renderPay(); }
 
-  if (S.user) showApp(); else showAuth();
+  // ---------- Boot ----------
+  async function boot() {
+    const me = await api('me', null, 'GET');
+    if (!me.user) { showAuth(); return; }
+    if (me.user.role === 'admin') { window.location.href = 'admin.html'; return; }
+    CSRF = me.csrf;
+    S = { ...blank(), user: me.user, profile: me.profile || {} };
+    await loadLive();
+    showApp();
+  }
+  showAuth();
+  if (/(^|\.)espinnovations\.com$/.test(location.hostname)) api('hit', { page: '/portal.html', ref: /espinnovations/.test(document.referrer) ? '' : document.referrer, new: /espinnovations/.test(document.referrer) ? '0' : '1' }).catch(() => {});
+  boot().catch(err => { if (err.offline) $('#pp-offline').hidden = false; showAuth(); });
 })();

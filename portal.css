@@ -218,3 +218,58 @@
 .pm-types button{font:600 12px var(--sans);letter-spacing:.14em;text-transform:uppercase;background:none;border:0;padding:12px 18px;min-height:44px;cursor:pointer}
 .pm-types button[aria-selected=true]{background:var(--ink);color:#fff}
 @media (max-width:700px){.pm-types{display:grid;grid-template-columns:1fr 1fr;width:100%}.pm-types button{padding:12px 8px;letter-spacing:.08em}}
+
+/* live portal additions */
+.pp-request .pfield small.pp-hint,.pp-hint{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.pp-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.pp-alert{margin-top:16px;background:#fdeee8;border-left:3px solid var(--accent);padding:12px 16px;font-size:14px;max-width:640px}
+.pp-alert .pm-link{font-size:inherit}
+.pp-msg{margin-top:14px;background:#e7efe9;border-left:3px solid var(--green);padding:12px 16px;font-size:14px;white-space:pre-line}
+.pp-msg b{display:block;font:600 11px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:4px}
+.pp-paybar{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#eef3fb;border-left:3px solid #1f5fbf;padding:12px 16px;font-size:14px}
+.pp-status.s5{background:#eee;color:#555}
+.pp-loading{color:var(--muted);font-size:14px;padding:12px 0}
+
+/* admin */
+.ad-stats button{font:inherit;text-align:left;cursor:pointer;background:#fff;border:0;padding:22px;color:inherit}
+.ad-stats button:hover{background:#f6f8f6}
+.ad-stats{grid-template-columns:repeat(4,1fr)}
+.ad-tools{display:grid;grid-template-columns:260px 1fr;gap:16px;margin:24px 0 18px;max-width:760px}
+.ad-card{background:#fff;border:1px solid var(--line);margin-bottom:12px}
+.ad-card>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:18px 22px}
+.ad-card>summary::-webkit-details-marker{display:none}
+.ad-card>summary h3{font-family:var(--sans);font-weight:600;font-size:16px}
+.ad-card>summary p{font-size:13px;color:var(--muted);margin-top:2px}
+.ad-card[open]>summary{border-bottom:1px solid var(--line)}
+.ad-body{padding:20px 22px;display:grid;gap:18px}
+.ad-kv{display:grid;grid-template-columns:150px 1fr;gap:6px 16px;font-size:14px}
+.ad-kv dt{color:var(--muted)}
+.ad-kv dd{margin:0;white-space:pre-line;overflow-wrap:anywhere}
+.ad-users{display:grid;gap:8px}
+.ad-user{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;border:1px solid var(--line);padding:10px 14px;font-size:14px}
+.ad-user b{font-weight:600}
+.ad-user small{color:var(--muted)}
+.ad-user .ad-acts{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
+.ad-req{background:#fdeee8;border-left:3px solid var(--accent);padding:10px 14px;font-size:14px;white-space:pre-line}
+.ad-add{margin:6px 0 22px;background:#fff;border:1px solid var(--line)}
+.ad-add>summary{cursor:pointer;padding:14px 18px;font-weight:600;color:var(--green)}
+.ad-add .pp-form{padding:4px 18px 18px}
+.ad-gen{align-self:end}
+.ad-tag{font:600 10.5px var(--sans);letter-spacing:.12em;text-transform:uppercase;padding:5px 8px;background:#eee;color:#555}
+.ad-tag.pending{background:#fdeee8;color:#a3360f}
+.ad-tag.active{background:#e7efe9;color:var(--green)}
+.ad-tag.disabled,.ad-tag.declined{background:#eee;color:#777}
+.ad-offline{grid-column:1/-1}
+@media (max-width:900px){.ad-stats{grid-template-columns:repeat(2,1fr)}.ad-tools{grid-template-columns:1fr}.ad-kv{grid-template-columns:1fr}}
+.pp-msg b .espi>span,.pp-h2 .espi>span,.eyebrow .espi>span{text-transform:none}
+
+/* admin traffic */
+.ad-bars{display:flex;align-items:flex-end;gap:3px;height:140px;margin-top:16px;padding:8px;background:#fff;border:1px solid var(--line)}
+.ad-bars span{flex:1;min-height:2px;background:var(--green);opacity:.85}
+.ad-tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.ad-tlist{list-style:none;margin:12px 0 0;padding:0;border:1px solid var(--line);background:#fff}
+.ad-tlist li{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;border-top:1px solid var(--line);font-size:14px}
+.ad-tlist li:first-child{border-top:0}
+.ad-tlist span{overflow-wrap:anywhere}
+.ad-tlist b{font-variant-numeric:tabular-nums}
+@media (max-width:860px){.ad-tgrid{grid-template-columns:1fr}}

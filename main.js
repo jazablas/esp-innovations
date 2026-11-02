@@ -1,3 +1,27 @@
+// ESPi server API (only on the live domain). Handles the host's one-time browser check.
+window.espiPost = (function(){
+  const live = /(^|\.)espinnovations\.com$/.test(location.hostname);
+  let challenged = false;
+  return async function post(action, data){
+    if (!live) throw new Error('offline');
+    const r = await fetch('/api/index.php?action=' + action, { method: 'POST', credentials: 'same-origin', keepalive: true, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'ESPi' }, body: JSON.stringify(data || {}) });
+    if (!(r.headers.get('content-type') || '').includes('application/json')) {
+      const m = (await r.text()).match(/document\.cookie\s*=\s*"([^"]+)"/);
+      if (m && !challenged) { challenged = true; document.cookie = m[1] + '; path=/; secure; samesite=lax'; return post(action, data); }
+      throw new Error('offline');
+    }
+    const j = await r.json(); if (!j.ok) { const e = new Error(j.error || 'failed'); e.server = true; throw e; } return j;
+  };
+})();
+// Private visit counts: no cookies, nothing stored in the browser, no personal data.
+(function(){
+  try {
+    const ref = document.referrer || '', own = /^https?:\/\/([^/]+\.)?espinnovations(inc)?\.com\//i.test(ref);
+    const page = location.pathname === '/index.html' ? '/' : location.pathname;
+    window.espiPost('hit', { page, ref: own ? '' : ref, new: own ? '0' : '1' }).catch(() => {});
+  } catch (e) { /* ignore */ }
+})();
+
 
 // Render "ESPi" in dynamic text with the blue lowercase i
 window.espify=function(root){ if(!root) return; const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>/\bESPi?\b(?! Innovations)(?!-\d)/.test(n.nodeValue)&&!(n.parentNode.closest&&n.parentNode.closest('.espi,script,style'))?1:2}); const ns=[]; while(w.nextNode()) ns.push(w.currentNode);
@@ -86,14 +110,17 @@ window.espify=function(root){ if(!root) return; const w=document.createTreeWalke
     const to = (ROUTES[v('type')] || 'info') + '@espinnovations.com';
     const btn = form.querySelector('button[type=submit]');
     btn.disabled = true; status.textContent = 'Sending your message…';
-    fetch('https://formsubmit.co/ajax/' + to, {
+    const payload = { name: v('name'), email: v('email'), company: v('company'), type: v('type'), message: v('msg'), to: to.split('@')[0], website: form.querySelector('.hp').value };
+    const viaRelay = () => fetch('https://formsubmit.co/ajax/' + to, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ name: v('name'), email: v('email'), company: v('company'), 'I am a': v('type'), message: v('msg'), _subject: subject, _template: 'table', _captcha: 'false' })
-    }).then(r => r.json().then(j => ({ ok: r.ok && String(j.success) === 'true' }))).then(({ ok }) => {
+    }).then(r => r.json().then(j => ({ ok: r.ok && String(j.success) === 'true' })));
+    window.espiPost('contact', payload).then(() => ({ ok: true }), err => err.server ? Promise.reject(err) : viaRelay()).then(({ ok }) => {
       if (!ok) throw new Error('send failed');
       form.reset(); status.textContent = 'Thank you. Your message is on its way, and we’ll reply by email soon.';
-    }).catch(() => {
+    }).catch(err => {
+      if (err && err.server) { status.textContent = err.message; return; }
       const body = 'Name: ' + v('name') + '\nCompany: ' + v('company') + '\nEmail: ' + v('email') + '\nI am a: ' + v('type') + '\n\n' + v('msg');
       status.innerHTML = 'We couldn’t send your message just now. Please <a href="mailto:' + to + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '">email it to ' + to + '</a> instead.';
     }).finally(() => { btn.disabled = false; });
@@ -110,7 +137,7 @@ window.espify=function(root){ if(!root) return; const w=document.createTreeWalke
     else{vid.pause(); vid.hidden=true; main.hidden=false; main.src=src; main.alt=cur.name+' photo '+(idx+1)+' of '+g.length;}
     counter.textContent=(idx+1)+' / '+g.length; thumbs.querySelectorAll('button').forEach((b,j)=>b.setAttribute('aria-current',j===idx?'true':'false'));
     const t=thumbs.children[idx]; if(t) t.scrollIntoView({block:'nearest',inline:'nearest'});}
-  function open(id,btn){cur=D[id]; if(!cur) return; opener=btn;
+  function open(id,btn){cur=D[id]; if(!cur) return; opener=btn; window.espiPost && window.espiPost('hit',{ev:'product',k:cur.name}).catch(()=>{});
     $('.pm-year').textContent=cur.year; $('.pm-tag').textContent=cur.tag; $('#pm-title').textContent=cur.name; $('.pm-more').textContent=cur.more; espify(dlg);
     const dl=$('.pm-details'); dl.innerHTML=''; cur.details.forEach(([k,v])=>{const d=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v;d.append(dt,dd);dl.append(d);});
     thumbs.innerHTML=''; cur.gallery.forEach((src,j)=>{const b=document.createElement('button');b.type='button';const v=/\.mp4$/.test(src); b.setAttribute('aria-label',v?'Play video':'Show photo '+(j+1)); if(v) b.className='pm-thumb-video'; const im=document.createElement('img');im.src=v?src.replace(/\.mp4$/,'.webp'):src;im.alt='';b.append(im);b.onclick=()=>show(j);thumbs.append(b);});

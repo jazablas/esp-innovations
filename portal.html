@@ -2,14 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="canonical" href="https://espinnovations.com/portal.html">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Client Portal — ESP Innovations Inc.</title>
 <meta name="description" content="Sign in to your ESP Innovations business account to place orders for goods and services and reorder products you already buy.">
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
 <link href="https://api.fontshare.com/v2/css?f[]=zodiak@400,700&f[]=switzer@400,500,600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="portal.css">
+<link rel="stylesheet" href="style.css?v=20261102b">
+<link rel="stylesheet" href="portal.css?v=20261102b">
 <link rel="icon" type="image/svg+xml" href="assets/brand/icon.svg">
 </head>
 <body class="pp">
@@ -42,12 +43,46 @@
       <h2 class="pp-card-title">Sign in</h2>
       <div class="pfield"><label for="pp-email">Business email</label><input id="pp-email" type="email" autocomplete="username" required></div>
       <div class="pfield"><label for="pp-pass">Password</label><input id="pp-pass" type="password" autocomplete="current-password" required></div>
-      <div class="pc-row"><label class="pc-check"><input type="checkbox" checked> Keep me signed in</label><a href="mailto:orders@espinnovations.com?subject=Client%20portal%20password%20reset">Forgot password?</a></div>
+      <div class="pc-row"><label class="pc-check"><input type="checkbox" id="pp-keep" checked> Keep me signed in</label><a href="#forgot" id="pp-to-forgot">Forgot password?</a></div>
       <button class="btn pc-btn" type="submit">Sign in</button>
       <p class="form-status pc-status" role="status" aria-live="polite"></p>
       <button type="button" class="pp-demo" id="pp-demo">Explore with a sample account</button>
-      <p class="pc-new">New to <span class="espi">ESP<span>i</span></span>? <a href="index.html#contact">Request a business account</a></p>
-      <p class="pp-note">Preview: orders are kept only while this page is open. When the portal goes live, accounts are created by <span class="espi">ESP<span>i</span></span> and orders go straight to our team.</p>
+      <p class="pc-new">New to <span class="espi">ESP<span>i</span></span>? <a href="#request" id="pp-to-request">Request a business account</a></p>
+      <p class="pp-note" id="pp-offline" hidden>Sign-in is available at <a href="https://espinnovations.com/portal.html">espinnovations.com/portal.html</a>. You can still explore the sample account here.</p>
+    </form>
+
+    <form class="portal-card pp-request" id="pp-request" novalidate hidden>
+      <h2 class="pp-card-title">Request a business account</h2>
+      <p class="pp-note">For businesses only. Our team reviews every request, usually within one business day, and emails you when your account is approved.</p>
+      <div class="pfield"><label for="rq-company">Company name</label><input id="rq-company" autocomplete="organization" required maxlength="160"></div>
+      <div class="pfield"><label for="rq-name">Your name</label><input id="rq-name" autocomplete="name" required maxlength="120"></div>
+      <div class="pfield"><label for="rq-email">Business email</label><input id="rq-email" type="email" autocomplete="email" required maxlength="190"></div>
+      <div class="pfield"><label for="rq-phone">Phone (optional)</label><input id="rq-phone" type="tel" autocomplete="tel" maxlength="60"></div>
+      <div class="pfield"><label for="rq-pass">Choose a password</label><input id="rq-pass" type="password" autocomplete="new-password" required minlength="10"><small class="pp-hint">At least 10 characters, with letters and numbers.</small></div>
+      <div class="pfield"><label for="rq-pass2">Confirm password</label><input id="rq-pass2" type="password" autocomplete="new-password" required></div>
+      <div class="pfield"><label for="rq-msg">What does your business need? (optional)</label><textarea id="rq-msg" rows="3" maxlength="2000"></textarea></div>
+      <div class="pp-hp" aria-hidden="true"><label for="rq-website">Website</label><input id="rq-website" tabindex="-1" autocomplete="off"></div>
+      <button class="btn pc-btn" type="submit">Send request</button>
+      <p class="form-status pc-status" role="status" aria-live="polite"></p>
+      <p class="pc-new">Already have an account? <a href="#signin" id="pp-to-signin">Sign in</a></p>
+    </form>
+
+    <form class="portal-card" id="pp-forgot" novalidate hidden>
+      <h2 class="pp-card-title">Reset your password</h2>
+      <p class="pp-note">Enter the email you use to sign in. If it matches an active account, we&rsquo;ll email you a link to choose a new password. The link works for one hour.</p>
+      <div class="pfield"><label for="fg-email">Business email</label><input id="fg-email" type="email" autocomplete="username" required maxlength="190"></div>
+      <button class="btn pc-btn" type="submit">Email me a reset link</button>
+      <p class="form-status pc-status" role="status" aria-live="polite"></p>
+      <p class="pc-new"><a href="#signin" class="pp-back-signin">Back to sign in</a></p>
+    </form>
+
+    <form class="portal-card" id="pp-reset" novalidate hidden>
+      <h2 class="pp-card-title">Choose a new password</h2>
+      <div class="pfield"><label for="rs-pass">New password</label><input id="rs-pass" type="password" autocomplete="new-password" required minlength="10"><small class="pp-hint">At least 10 characters, with letters and numbers.</small></div>
+      <div class="pfield"><label for="rs-pass2">Confirm new password</label><input id="rs-pass2" type="password" autocomplete="new-password" required></div>
+      <button class="btn pc-btn" type="submit">Save new password</button>
+      <p class="form-status pc-status" role="status" aria-live="polite"></p>
+      <p class="pc-new"><a href="#signin" class="pp-back-signin">Back to sign in</a></p>
     </form>
   </div>
 </section>
@@ -69,6 +104,7 @@
     <section class="pp-panel" data-panel="overview">
       <p class="eyebrow">Welcome back</p>
       <h1 class="pp-h" id="pp-hello">Hello.</h1>
+      <p class="pp-alert" id="pp-pw-note" hidden>Your password was set by our team. Please <button type="button" class="pm-link" data-go="account">choose your own password</button>.</p>
       <p class="pp-sub" id="pp-sample-note" hidden>You&rsquo;re viewing a sample account. The company, orders and statuses are examples to show how the portal works.</p>
       <div class="pp-stats">
         <div><span id="st-open">0</span><p>Open orders</p></div>
@@ -79,7 +115,7 @@
         <button type="button" class="pp-q" data-go="order"><b>Place a new order</b><span>Goods and services</span></button>
         <button type="button" class="pp-q" data-go="reorder"><b>Reorder products</b><span>From what you already buy</span></button>
         <button type="button" class="pp-q" data-go="history"><b>Track orders</b><span>Status from quote to delivery</span></button>
-        <button type="button" class="pp-q" data-go="payment"><b>Payment methods</b><span>Cards, ACH, net terms, wire</span></button>
+        <button type="button" class="pp-q" data-go="payment"><b>Payment methods</b><span>Payment links, net terms, wire</span></button>
       </div>
       <h2 class="pp-h2">Recent orders</h2>
       <div id="pp-recent"></div>
@@ -128,6 +164,16 @@
         <button class="btn" type="submit">Save profile</button>
         <p class="form-status pp-ok" role="status" aria-live="polite"></p>
       </form>
+
+      <h2 class="pp-h2" id="pw-h">Change password</h2>
+      <form class="pp-form" id="pp-password" novalidate>
+        <input type="email" autocomplete="username" id="pw-user" hidden>
+        <div class="pfield pf-wide"><label for="pw-cur">Current password</label><input id="pw-cur" type="password" autocomplete="current-password" required></div>
+        <div class="pfield"><label for="pw-new">New password</label><input id="pw-new" type="password" autocomplete="new-password" required minlength="10"><small class="pp-hint">At least 10 characters, with letters and numbers.</small></div>
+        <div class="pfield"><label for="pw-new2">Confirm new password</label><input id="pw-new2" type="password" autocomplete="new-password" required></div>
+        <button class="btn" type="submit">Update password</button>
+        <p class="form-status pp-ok" role="status" aria-live="polite"></p>
+      </form>
     </section>
 
 
@@ -135,63 +181,46 @@
     <section class="pp-panel" data-panel="payment" hidden>
       <p class="eyebrow">Payment methods</p>
       <h1 class="pp-h">How your company pays</h1>
-      <p class="pp-sub">Save the payment methods your company uses, choose a default, and pick one each time you place an order. Nothing is charged when you send an order request; we charge or invoice only after you approve the quote.</p>
+      <p class="pp-sub">Tell us how your company pays, choose a default, and pick one each time you place an order. Nothing is charged when you send an order request; we invoice or send a payment link only after you approve the quote.</p>
       <div class="pm-secure" role="note">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 10V7a6 6 0 0 1 12 0v3M5 10h14v11H5z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
-        <p><b>Secure by design.</b> Card and bank details are encrypted and stored by a PCI-compliant payment processor, not on <span class="espi">ESP<span>i</span></span>&rsquo;s servers. Only the last four digits are ever shown, and your security code is never stored.</p>
+        <p><b>Secure by design.</b> <span class="espi">ESP<span>i</span></span> never asks for card or bank numbers in this portal. Card and ACH payments are made through a secure payment link we send with each approved quote or invoice, handled by a PCI-compliant payment processor.</p>
       </div>
       <div id="pm-list" class="pm-list"></div>
 
       <h2 class="pp-h2">Add a payment method</h2>
       <div class="pm-types" role="tablist" aria-label="Payment type">
-        <button type="button" role="tab" data-pmtype="card" aria-selected="true">Company card</button>
-        <button type="button" role="tab" data-pmtype="ach" aria-selected="false">Bank account (ACH)</button>
+        <button type="button" role="tab" data-pmtype="link" aria-selected="true">Card or ACH (payment link)</button>
         <button type="button" role="tab" data-pmtype="terms" aria-selected="false">Net terms (invoice)</button>
         <button type="button" role="tab" data-pmtype="wire" aria-selected="false">Wire transfer</button>
       </div>
 
-      <form class="pp-form pm-form" id="pm-card" data-pmtype="card" novalidate>
-        <div class="pfield pf-wide"><label for="cc-name">Name on card</label><input id="cc-name" autocomplete="cc-name" required></div>
-        <div class="pfield pf-wide"><label for="cc-num">Card number</label><input id="cc-num" inputmode="numeric" autocomplete="cc-number" placeholder="1234 1234 1234 1234" maxlength="23" required><span class="pm-brand" id="cc-brand" aria-live="polite"></span></div>
-        <div class="pfield"><label for="cc-exp">Expiry (MM/YY)</label><input id="cc-exp" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5" required></div>
-        <div class="pfield"><label for="cc-cvc">Security code</label><input id="cc-cvc" inputmode="numeric" autocomplete="cc-csc" placeholder="CVC" maxlength="4" required></div>
-        <div class="pfield"><label for="cc-zip">Billing ZIP code</label><input id="cc-zip" inputmode="numeric" autocomplete="postal-code" maxlength="10" required></div>
-        <div class="pfield"><label for="cc-label">Nickname (optional)</label><input id="cc-label" placeholder="e.g. Purchasing card"></div>
-        <label class="pm-check pf-wide"><input type="checkbox" id="cc-default"> Make this the default for new orders</label>
-        <button class="btn" type="submit">Save card</button>
-        <p class="form-status pp-ok" role="status" aria-live="polite"></p>
-      </form>
-
-      <form class="pp-form pm-form" id="pm-ach" data-pmtype="ach" novalidate hidden>
-        <div class="pfield pf-wide"><label for="ach-holder">Account holder (company name)</label><input id="ach-holder" autocomplete="organization" required></div>
-        <div class="pfield"><label for="ach-bank">Bank name</label><input id="ach-bank" required></div>
-        <div class="pfield"><label for="ach-type">Account type</label><select id="ach-type"><option>Business checking</option><option>Business savings</option></select></div>
-        <div class="pfield"><label for="ach-routing">Routing number</label><input id="ach-routing" inputmode="numeric" maxlength="9" placeholder="9 digits" required></div>
-        <div class="pfield"><label for="ach-acct">Account number</label><input id="ach-acct" inputmode="numeric" maxlength="17" required></div>
-        <label class="pm-check pf-wide"><input type="checkbox" id="ach-auth" required> I&rsquo;m authorized to use this account, and I authorize ESP Innovations Inc. to debit it for orders I approve.</label>
-        <label class="pm-check pf-wide"><input type="checkbox" id="ach-default"> Make this the default for new orders</label>
-        <button class="btn" type="submit">Save bank account</button>
+      <form class="pp-form pm-form" id="pm-link" data-pmtype="link" novalidate>
+        <p class="pp-fine">Pay each approved quote by card or bank transfer (ACH) through a secure link we email to you. No card or bank numbers are stored here.</p>
+        <div class="pfield"><label for="lk-ap">Send payment links to</label><input id="lk-ap" type="email" autocomplete="email" required></div>
+        <div class="pfield"><label for="lk-via">Preferred way to pay</label><select id="lk-via"><option value="Card">Company card</option><option value="ACH">Bank transfer (ACH)</option></select></div>
+        <label class="pm-check pf-wide"><input type="checkbox" id="lk-default"> Make this the default for new orders</label>
+        <button class="btn" type="submit">Save payment link</button>
         <p class="form-status pp-ok" role="status" aria-live="polite"></p>
       </form>
 
       <form class="pp-form pm-form" id="pm-terms" data-pmtype="terms" novalidate hidden>
         <p class="pp-fine">Ask to be invoiced on payment terms. Our accounts team reviews each request and confirms the terms with you in writing.</p>
         <div class="pfield"><label for="nt-ap">Accounts payable email</label><input id="nt-ap" type="email" autocomplete="email" required></div>
-        <div class="pfield"><label for="nt-terms">Terms requested</label><select id="nt-terms"><option>Net 15</option><option>Net 30</option><option>Net 45</option><option>Net 60</option></select></div>
-        <div class="pfield"><label for="nt-tax">Tax ID / EIN (optional)</label><input id="nt-tax"></div>
+        <div class="pfield"><label for="nt-terms">Terms requested</label><select id="nt-terms"><option>Net 15</option><option selected>Net 30</option><option>Net 45</option><option>Net 60</option></select></div>
+        <div class="pfield"><label for="nt-tax">Tax ID / EIN (optional)</label><input id="nt-tax" maxlength="40"></div>
         <div class="pfield"><label for="nt-po">PO required on invoices?</label><select id="nt-po"><option>Yes</option><option>No</option></select></div>
         <button class="btn" type="submit">Request net terms</button>
         <p class="form-status pp-ok" role="status" aria-live="polite"></p>
       </form>
 
       <form class="pp-form pm-form" id="pm-wire" data-pmtype="wire" novalidate hidden>
-        <p class="pp-fine">Pay each order by bank wire. We send verified wire instructions with your invoice; we never change wire details by email, so always confirm with us by phone before sending funds to new instructions.</p>
+        <p class="pp-fine">Pay each order by bank wire. We send verified wire instructions with your invoice; we never change wire details by email, so always confirm with us before sending funds to new instructions.</p>
         <div class="pfield pf-wide"><label for="wr-ap">Remittance contact email</label><input id="wr-ap" type="email" autocomplete="email" required></div>
         <label class="pm-check pf-wide"><input type="checkbox" id="wr-default"> Make this the default for new orders</label>
         <button class="btn" type="submit">Save wire transfer</button>
         <p class="form-status pp-ok" role="status" aria-live="polite"></p>
       </form>
-      <p class="pp-fine pm-preview-note">Preview portal: card and bank numbers you enter here are checked in your browser and then discarded. Only the type and last four digits are kept, and only until you sign out.</p>
     </section>
 
     <!-- CART -->
@@ -206,7 +235,7 @@
         <fieldset class="pf-wide pm-pick"><legend>Payment method</legend><div id="ck-pay"></div></fieldset>
         <div class="pfield pf-wide"><label for="ck-notes">Notes for the <span class="espi">ESP<span>i</span></span> team</label><textarea id="ck-notes" rows="3" placeholder="Packaging, branding, timing, certifications needed&hellip;"></textarea></div>
         <button class="btn" type="submit">Send order request</button>
-        <p class="pp-fine">The <span class="espi">ESP<span>i</span></span> team reviews every request and replies with a confirmed quote and timeline. Your payment method is used only after you approve the quote. Your email app will open so the request also reaches orders@espinnovations.com.</p>
+        <p class="pp-fine">The <span class="espi">ESP<span>i</span></span> team reviews every request and replies with a confirmed quote and timeline. Your payment method is used only after you approve the quote.</p>
       </form>
     </section>
   </div>
@@ -220,6 +249,6 @@
   <p>&copy; <span id="year">2026</span> ESP Innovations Inc. &middot; 8549 Wilshire Blvd, Ste. 347, Beverly Hills, CA 90211 &middot; Orders: <a href="mailto:orders@espinnovations.com">orders@espinnovations.com</a> &middot; Invoices: <a href="mailto:accounts@espinnovations.com">accounts@espinnovations.com</a> &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
 </footer>
 
-<script src="portal.js" defer></script>
+<script src="portal.js?v=20261102c" defer></script>
 </body>
 </html>
